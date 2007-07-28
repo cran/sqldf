@@ -1,4 +1,12 @@
 
+Version 0.1-1
+
+o removed use of subset in favor of subscripts since codetools chokes on it
+
+o added table example to sqldf.Rd
+
+o improved explanation in sqldf.Rd
+
 Version 0.1-0
 
 o initial release
