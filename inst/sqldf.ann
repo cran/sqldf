@@ -1,12 +1,16 @@
 
 sqldf is an R package for running SQL select
-statements on one or more data frames, optimized
-for convenience.  In particular, it:
+statements on one or more R data frames. It is
+optimized for convenience making it useful
+for ad hoc queries against R data frames.  
+
+Given an SQL select statement whose tables
+are the names of R data frames it:
 
 - sets up the database (by default it transparently 
   sets up an in memory SQLite database using RSQLite; 
-  however, MySQL, which uses RMySQL, can be specified 
-  as an alternative.  MySQL has not been tested.)
+  however, MySQL via RMySQL, can be specified as an 
+  alternative.  MySQL has not been tested.)
 - imports the data frames found in SQL select
   statement into the database
 - runs the SQL select statement
@@ -24,8 +28,9 @@ statement whose functionality is similar to the R
 aggregate function.  Note that although the iris
 dataset (which is built into R) uses the name 
 Sepal.Length the R database interface, DBI, converts 
-that to Sepal_Length.  Just install sqldf and type 
-these two lines into R without the >:
+that to Sepal_Length.  Just install the sqldf package
+from CRAN and type these two lines into R without 
+the > prompts:
 
 > library(sqldf)
 > sqldf("select Species, avg(Sepal_Length) from iris group by Species")
@@ -46,9 +51,10 @@ It can be used:
 - learning SQL if you know R
 - learning R if you know SQL
 
-The sqldf package has a single function, sqldf.  More information
-is available by issuing the command ?sqldf from within R.  More
-examples and useful links are available at the home page:
+The sqldf package has a single function, sqldf.  More 
+information is available by issuing the command ?sqldf 
+from within R.  More examples and useful links are 
+available at the sqldf home page:
 
 http://code.google.com/p/sqldf/
 

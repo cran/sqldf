@@ -1,4 +1,30 @@
 
+Version 0.1-2
+
+o searches for and uses "file" objects as well as data frame objects.
+  file.format argument or "file.format" attribute on file object
+  is a list with arguments accepted by sqliteImportFile.
+  [Thanks to Soren Hojsgaard for suggestion to support files.]
+
+o dots in argument list replaced with a single variable x.
+  x can be a "character" vector in which case each component is 
+  executed by SQLite in turn and result of the last is returned.
+
+o new dbname argument can be specified.  For SQLite it defaults to ":memory:",
+  i.e. an embedded data base.  If database does not exist it is created
+  and deleted upon exit.  If it does exist then tables created by sqldf
+  are are deleted on exit.
+
+o improvements in sqldf.Rd
+
+o MySQL testing
+
+o added a demo illustrating sorting and grouping vs. nested selects
+
+o new example illustrating vector x
+
+o support for POSIXct, Date and chron dates and times
+
 Version 0.1-1
 
 o removed use of subset in favor of subscripts since codetools chokes on it
