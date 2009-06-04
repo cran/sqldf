@@ -1,0 +1,3 @@
+read.csv.sql(filename, sql = , sep, header, eol, ...)
+where ... are passed to sqldf and the sql statement can contain
+the word file to refer to the indicated file.
