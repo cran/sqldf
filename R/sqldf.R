@@ -76,7 +76,7 @@ sqldf <- function(x, stringsAsFactors = TRUE, col.classes = NULL,
 
 	if (request.con) dbPreExists <- attr(connection, "dbPreExists")
 
-	words <- strapply(x, "\\w+")
+	words <- strapply(x, "[[:alnum:]._]+")
 	if (length(words) > 0) words <- unique(words[[1]])
 	is.special <- sapply(
 		mget(words, envir, "any", NA, inherits = TRUE), 
@@ -93,7 +93,12 @@ sqldf <- function(x, stringsAsFactors = TRUE, col.classes = NULL,
 			stop(paste("sqldf:", "table", nam, 
 				"already in", dbname, "\n"))
 		}
-		dbWriteTable(connection, nam, as.data.frame(get(nam, envir)), 
+		# check if the nam2 processing works with MySQL
+		# if not then ensure its only applied to SQLite
+		nam2 <- if (regexpr(".", nam, fixed = TRUE)) {
+			paste("`", nam, "`", sep = "")
+		} else nam
+		dbWriteTable(connection, nam2, as.data.frame(get(nam, envir)), 
 			row.names = row.names)
 	}
 
@@ -152,6 +157,8 @@ sqldf <- function(x, stringsAsFactors = TRUE, col.classes = NULL,
 				else if (inherits(df[[cn]], "factor"))
 					return(factor(rs[[cn]], 
 						levels = levels(df[[cn]])))
+				else if (inherits(df[[cn]], "POSIXct"))
+					return(as.POSIXct(rs[[cn]]))
 				else {
 					asfn <- paste("as", 
 						class(df[[cn]]), sep = ".")
@@ -185,3 +192,9 @@ read.csv.sql <- function(file, sql = "select * from file",
 	sqldf(sql, envir = p, file.format = file.format, dbname = dbname, ...)
 }
 
+read.csv2.sql <- function(file, sql = "select * from file", 
+	header = TRUE, sep = ";", row.names, eol, skip, dbname = tempfile(), ...) {
+
+	read.csv.sql(file = file, sql = sql, header = header, sep = sep, 
+		row.names = row.names, eol = eol, skip = skip, dbname = dbname)
+}

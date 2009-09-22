@@ -1,6 +1,7 @@
 \name{read.csv.sql}
 \Rdversion{1.1}
 \alias{read.csv.sql}
+\alias{read.csv2.sql}
 \title{
 Read File Filtered by SQL
 }
@@ -11,6 +12,7 @@ handle can be accommodated.
 }
 \usage{
 read.csv.sql(file, sql = "select * from file", header = TRUE, sep = ",", row.names, eol, skip, dbname = tempfile(), ...)
+read.csv2.sql(file, sql = "select * from file", header = TRUE, sep = ";", row.names, eol, skip, dbname = tempfile(), ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -55,6 +57,9 @@ not as flexible as in R.  For example, it does not
 recognize quoted fields as special but will regard the quotes as 
 part of the field. See the
 \code{sqldf} help for more information.
+
+\code{read.csv2.sql} is like \code{read.csv.sql} except
+the default \code{sep} is \code{";"}.
 }
 \value{
 If the sql statement is a select statement then a data frame
