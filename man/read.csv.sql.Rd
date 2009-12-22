@@ -11,8 +11,8 @@ portion is processed by R so that files larger than R can otherwise
 handle can be accommodated.
 }
 \usage{
-read.csv.sql(file, sql = "select * from file", header = TRUE, sep = ",", row.names, eol, skip, dbname = tempfile(), ...)
-read.csv2.sql(file, sql = "select * from file", header = TRUE, sep = ";", row.names, eol, skip, dbname = tempfile(), ...)
+read.csv.sql(file, sql = "select * from file", header = TRUE, sep = ",", row.names, eol, skip, filter, dbname = tempfile(), ...)
+read.csv2.sql(file, sql = "select * from file", header = TRUE, sep = ";", row.names, eol, skip, filter, dbname = tempfile(), ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -38,6 +38,9 @@ Character which ends line.
   \item{skip}{
 Skip indicated number of lines in input file.
 }
+  \item{filter}{
+If specified, this should be a shell/batch command that the input file is piped through.  For \code{read.csv2.sql} it is by default the following on non-Windows systems: \code{tr , .}.  This translates all commas in the file to dots. On Windows similar functionalty is provided but to do that using a vbscript file that is included with \code{sqldf} to emulate the \code{tr} command.
+}
   \item{dbname}{
 As in \code{sqldf} except that the default is \code{tempfile()}.
 }
@@ -59,7 +62,12 @@ part of the field. See the
 \code{sqldf} help for more information.
 
 \code{read.csv2.sql} is like \code{read.csv.sql} except
-the default \code{sep} is \code{";"}.
+the default \code{sep} is \code{";"} and the default \code{filter} translates
+all commas in the file to decimal points (i.e. to dots).
+
+On Windows, if the \code{filter} argument is used and if Rtools is detected
+in the registry then the Rtools bin directory is added to the search path
+facilitating use of those tools without explicitly setting any the path.
 }
 \value{
 If the sql statement is a select statement then a data frame

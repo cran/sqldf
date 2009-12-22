@@ -2,7 +2,7 @@
 sqldf <- function(x, stringsAsFactors = TRUE, col.classes = NULL, 
    row.names = FALSE, envir = parent.frame(), method = c("auto", "raw"), 
    file.format = list(), dbname, drv = getOption("sqldf.driver"), 
-   connection = getOption("sqldf.connection")) {
+   dll = getOption("sqldf.dll"), connection = getOption("sqldf.connection")) {
 
    as.POSIXct.character <- function(x) structure(as.numeric(x),
 	class = c("POSIXt", "POSIXct"))
@@ -49,21 +49,53 @@ sqldf <- function(x, stringsAsFactors = TRUE, col.classes = NULL,
 	if (request.open || request.nocon) {
     
     	if (is.null(drv)) {
-    		drv <- if ("package:RMySQL" %in% search()) "MySQL" 
-    		else "SQLite"
+    		drv <- if ("package:RMySQL" %in% search()) { "MySQL" 
+    		} else if ("package:RJDBC" %in% search()) { "H2" 
+    		} else "SQLite"
     	}
     
     	if (drv == "MySQL") {
     		m <- dbDriver("MySQL")
-    		connection <- if (missing(dbname)) { 
+    		connection <- if (missing(dbname) || dbname == ":memory:") { 
     				dbConnect(m) 
     			} else dbConnect(m, dbname = dbname)
     			dbPreExists <- TRUE
-    	} else {
+    	} else if (drv == "H2") {
+			# jar.file <- "C:\\Program Files\\H2\\bin\\h2.jar"
+			jar.file <- system.file("h2.jar", package = "H2")
+			m <- JDBC("org.h2.Driver", jar.file, identifier.quote = '"')
+    		if (missing(dbname)) dbname <- ":memory:"
+    		dbPreExists <- dbname != ":memory:" && file.exists(dbname)
+			connection <- if (missing(dbname) || dbname == ":memory:") {
+					dbConnect(m, "jdbc:h2:mem:", "sa", "")
+				} else {
+					jdbc.string <- paste("jdbc:h2", dbname, sep = ":")
+					dbConnect(m, jdbc.string, "sa", "")
+				}
+		} else {
     		m <- dbDriver("SQLite")
     		if (missing(dbname)) dbname <- ":memory:"
     		dbPreExists <- dbname != ":memory:" && file.exists(dbname)
-    		connection <- dbConnect(m, dbname = dbname)
+
+			# search for spatialite extension on PATH and, if found, load it
+			if (is.null(getOption("sqldf.dll"))) {
+				dll <- Sys.which("libspatialite-1.dll")
+				if (dll != "") options(sqldf.dll = dll) else options(sqldf.dll = FALSE)
+			}
+			dll <- getOption("sqldf.dll")
+			if (length(dll) != 1 || identical(dll, FALSE) || nchar(dll) == 0) {
+				dll <- FALSE
+			} else {
+				if (dll == basename(dll)) dll <- Sys.which(dll)
+			}
+			options(sqldf.dll = dll)
+
+			if (!identical(dll, FALSE)) {
+				connection <- dbConnect(m, dbname = dbname, 
+					loadable.extensions = TRUE)
+				s <- sprintf("select load_extension('%s')", dll)
+				dbGetQuery(connection, s)
+			} else connection <- dbConnect(m, dbname = dbname)
     	}
 		attr(connection, "dbPreExists") <- dbPreExists
 		if (missing(dbname) && drv == "SQLite") dbname <- ":memory:"
@@ -76,6 +108,7 @@ sqldf <- function(x, stringsAsFactors = TRUE, col.classes = NULL,
 
 	if (request.con) dbPreExists <- attr(connection, "dbPreExists")
 
+	# words <- strapply(x, "\\w+")
 	words <- strapply(x, "[[:alnum:]._]+")
 	if (length(words) > 0) words <- unique(words[[1]])
 	is.special <- sapply(
@@ -120,6 +153,28 @@ sqldf <- function(x, stringsAsFactors = TRUE, col.classes = NULL,
 		args <- c(list(conn = connection, name = fo, value = Filename), 
 			modifyList(list(eol = eol), file.format))
 		args <- modifyList(args, as.list(attr(get(fo, envir), "file.format")))
+		filter <- args$filter
+		if (!is.null(filter)) {
+			args$filter <- NULL
+			Filename.tmp <- tempfile()
+			args$value <- Filename.tmp
+			cmd <- sprintf("%s < %s > %s", filter, Filename, Filename.tmp)
+			# on Windows platform preface command with cmd /c 
+			if (.Platform$OS == "windows") {
+				cmd <- paste("cmd /c", cmd)
+				key <- "SOFTWARE\\R-core"
+				reg <- readRegistry(key, maxdepth = 3)$Rtools$InstallPath
+				# add Rtools bin directory to PATH if found in registry
+				if (!is.null(reg)) {
+					Rtools.path <- file.path(reg, "bin", fsep = "\\")
+					path <- Sys.getenv("PATH")
+					on.exit(Sys.setenv(PATH = path), add = TRUE)
+					path.new <- paste(path, Rtools.path, sep = ";")
+					Sys.setenv(PATH = path.new)
+				}
+			}
+			system(cmd)
+		}
 		do.call("dbWriteTable", args)
 	}
 
@@ -178,7 +233,8 @@ sqldf <- function(x, stringsAsFactors = TRUE, col.classes = NULL,
 
 
 read.csv.sql <- function(file, sql = "select * from file", 
-	header = TRUE, sep = ",", row.names, eol, skip, dbname = tempfile(), ...) {
+	header = TRUE, sep = ",", row.names, eol, skip, filter, 
+	dbname = tempfile(), ...) {
 	file.format <- list(header = header, sep = sep)
 	if (!missing(eol)) 
 		file.format <- append(file.format, list(eol = eol))
@@ -186,15 +242,26 @@ read.csv.sql <- function(file, sql = "select * from file",
 		file.format <- append(file.format, list(row.names = row.names))
 	if (!missing(skip)) 
 		file.format <- append(file.format, list(skip = skip))
+	if (!missing(filter)) 
+		file.format <- append(file.format, list(filter = filter))
 	pf <- parent.frame()
 	p <- proto(pf, file = file(file))
 	p <- do.call(proto, list(pf, file = file(file)))
 	sqldf(sql, envir = p, file.format = file.format, dbname = dbname, ...)
 }
 
+
 read.csv2.sql <- function(file, sql = "select * from file", 
-	header = TRUE, sep = ";", row.names, eol, skip, dbname = tempfile(), ...) {
+	header = TRUE, sep = ";", row.names, eol, skip, filter, 
+    dbname = tempfile(), ...) {
+
+	if (missing(filter)) {
+		filter <- if (.Platform$OS == "windows")
+			paste("cscript", tr("/", "\\", system.file("trcomma2dot.vbs", package = "sqldf")))
+		else "tr , ."
+	}
 
 	read.csv.sql(file = file, sql = sql, header = header, sep = sep, 
-		row.names = row.names, eol = eol, skip = skip, dbname = dbname)
+		row.names = row.names, eol = eol, skip = skip, filter = filter, 
+		dbname = dbname)
 }
