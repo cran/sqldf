@@ -131,9 +131,10 @@ sqldf <- function(x, stringsAsFactors = TRUE, col.classes = NULL,
 		dbPreExists <- attr(connection, "dbPreExists")
 	}
 
-	# words <- strapply(x, "\\w+")
-	words <- strapply(x, "[[:alnum:]._]+")
-	if (length(words) > 0) words <- unique(words[[1]])
+	# words. is a list whose ith component contains vector of words in ith stmt
+	# words is all the words in one long vector without duplicates
+	words. <- words <- strapply(x, "[[:alnum:]._]+")
+	if (length(words) > 0) words <- unique(unlist(words))
 	is.special <- sapply(
 		mget(words, envir, "any", NA, inherits = TRUE), 
 		function(x) is.data.frame(x) + 2 * inherits(x, "file"))
@@ -211,8 +212,23 @@ sqldf <- function(x, stringsAsFactors = TRUE, col.classes = NULL,
 		do.call("dbWriteTable", args)
 	}
 
-	# process select statement
-	for(xi in x) rs <- dbGetQuery(connection, xi)
+	# SQLite can process all statements using dbGetQuery.  
+	# Other databases process select/call/show with dbGetQuery and other 
+	# statements with dbSendQuery.
+	if (drv == "sqlite") {
+		for(xi in x) rs <- dbGetQuery(connection, xi)
+	} else {
+		for(i in seq_along(x)) {
+			if (length(words.[[i]]) > 0) {
+				dbGetQueryWords <- c("select", "show", "call", "explain")
+				if (tolower(words.[[i]][1]) %in% dbGetQueryWords) {
+					rs <- dbGetQuery(connection, x[i])
+				} else {
+					rs <- dbSendUpdate(connection, x[i])
+				}
+			}
+		}
+	}
 
 	# get result back
 	if (match.arg(method) == "raw") return(rs)
@@ -247,6 +263,8 @@ sqldf <- function(x, stringsAsFactors = TRUE, col.classes = NULL,
 						levels = levels(df[[cn]])))
 				else if (inherits(df[[cn]], "POSIXct"))
 					return(as.POSIXct(rs[[cn]]))
+				else if (identical(class(df[[cn]]), "times")) 
+					return(times(df[[cn]]))
 				else {
 					asfn <- paste("as", 
 						class(df[[cn]]), sep = ".")
@@ -267,7 +285,7 @@ sqldf <- function(x, stringsAsFactors = TRUE, col.classes = NULL,
 
 read.csv.sql <- function(file, sql = "select * from file", 
 	header = TRUE, sep = ",", row.names, eol, skip, filter, 
-	dbname = tempfile(), ...) {
+	dbname = tempfile(), drv = "SQLite", ...) {
 	file.format <- list(header = header, sep = sep)
 	if (!missing(eol)) 
 		file.format <- append(file.format, list(eol = eol))
@@ -280,13 +298,13 @@ read.csv.sql <- function(file, sql = "select * from file",
 	pf <- parent.frame()
 	p <- proto(pf, file = file(file))
 	p <- do.call(proto, list(pf, file = file(file)))
-	sqldf(sql, envir = p, file.format = file.format, dbname = dbname, ...)
+	sqldf(sql, envir = p, file.format = file.format, dbname = dbname, drv = drv, ...)
 }
 
 
 read.csv2.sql <- function(file, sql = "select * from file", 
 	header = TRUE, sep = ";", row.names, eol, skip, filter, 
-    dbname = tempfile(), ...) {
+    dbname = tempfile(), drv = "SQLite", ...) {
 
 	if (missing(filter)) {
 		filter <- if (.Platform$OS == "windows")
@@ -296,5 +314,5 @@ read.csv2.sql <- function(file, sql = "select * from file",
 
 	read.csv.sql(file = file, sql = sql, header = header, sep = sep, 
 		row.names = row.names, eol = eol, skip = skip, filter = filter, 
-		dbname = dbname)
+		dbname = dbname, drv = drv)
 }
