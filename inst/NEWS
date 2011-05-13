@@ -1,3 +1,43 @@
+Version 0.4-0
+
+o the heuristic which assigns classes to columns for the data frame output
+  from sqldf has been improved
+
+o method argument can now be a list of two transformations. The first
+  component corresponds to the old method and can be a keyword ("auto", "raw"
+  or "name__class"), a function or a character vector of class names.  The
+  second may be a function which is used to transform all data frames input
+  to the data base prior to sending them to the data base.
+
+o automatic searching for spatialite is no longer performed.  It seems less
+  useful now that RSQLite.extfunctions is automatically loaded.  To use
+  the spatialite extension specify its path using the dll argument.
+
+o sqldf has a new optional argument, verbose, which gives more output if
+  it is set to TRUE.  Any other value suppresses the extra output.
+
+o filter may be a list whose first component is a command with keywords
+  naming the second and subsequent components.  These components are each
+  specified as character vectors which are written out to temporary files
+  of the indicated names.  This can be used for specifying gawk and other 
+  filters/preprocessors of the input file without having to worry about
+  shell interpretation of special characters. e.g.
+	filter = list("gawk -f prog", prog = '{ gsub(",", ".") }')
+
+o MySQL is now supported (in addition to SQLite, PostgreSQL and h2).
+
+o stringsAsFactors now defaults to FALSE
+
+o unit tests have been added.  To run them for sqlite do this:
+	R CMD check sqldf
+  or:
+	demo("sqldf-unitTests")
+  To run for all 4 databases:
+    demo("sqldf-unitTests") # sqlite
+    library(RH2); demo("sqldf-unitTests"); detach()
+    library(RMySQL); demo("sqldf-unitTests"); detach()
+    library(RpgSQL); demo("sqldf-unitTests"); detach()
+
 Version 0.3-5
 
 o global option "sqldf.method" used as default value of method argument.  If
