@@ -1,0 +1,15 @@
+132675cd3b5fdc1640715a7df6cbd540 *DESCRIPTION
+d4b1502ae01198bfc26bf9ce9d2af5b8 *R/sqldf.R
+327f554d1a8ed20e9e69a5a4ea19e42c *R/zzz.R
+6f3e5ceff484deffa8feb9e86b4b1815 *demo/00Index
+04f38c6113bff007c1e2fb5c08482996 *demo/sqldf-groupchoose.R
+932a7c81721132ee50761089f0fb401a *demo/sqldf-unitTests.R
+5b9b90da93d8c79de860fc9fe33b5049 *inst/NEWS
+190e1d7ec11223bd5d860a514b5ed600 *inst/THANKS
+5a07b7aaa3728f48339e3a12a9a5f482 *inst/TODO
+4691ad4adba92216269a19c62a592197 *inst/trcomma2dot.vbs
+55b3fbbd5e16af4558a478d2be36b462 *inst/unitTests/runit.all.R
+6c1c233811026ee9a7ad1222bc434c51 *man/read.csv.sql.Rd
+2b643fcb963e7436d3524fe32400f1f4 *man/sqldf-package.Rd
+6dec65cc3f96bd2161d7da2d43283e84 *man/sqldf.Rd
+dcfcf3d0a9be4dd60b38b55a7354b491 *tests/doSvUnit.R
