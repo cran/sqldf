@@ -176,7 +176,8 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 			m <- dbDriver("H2")
     		if (missing(dbname) || is.null(dbname)) dbname <- ":memory:"
     		dbPreExists <- dbname != ":memory:" && file.exists(dbname)
-			connection <- if (missing(dbname) || dbname == ":memory:") {
+			connection <- if (missing(dbname) || is.null(dbname) || 
+				dbname == ":memory:") {
 					dbConnect(m, "jdbc:h2:mem:", "sa", "")
 				} else {
 					jdbc.string <- paste("jdbc:h2", dbname, sep = ":")
@@ -186,7 +187,7 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 		} else {
 			if (verbose) cat("sqldf: m <- dbDriver(\"SQLite\")\n")
     		m <- dbDriver("SQLite")
-    		if (missing(dbname)) dbname <- ":memory:"
+    		if (missing(dbname) || is.null(dbname)) dbname <- ":memory:"
     		dbPreExists <- dbname != ":memory:" && file.exists(dbname)
 
 			# search for spatialite extension on PATH and, if found, load it
@@ -312,7 +313,9 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 				cat(filter.subs[[nm]], file = filter.tempfiles[[nm]])
 				cmd <- gsub(nm, filter.tempfiles[[nm]], cmd, fixed = TRUE)
 			}
-			cmd <- sprintf('%s < "%s" > "%s"', cmd, Filename, Filename.tmp)
+			cmd <- if (nchar(Filename) > 0)
+				sprintf('%s < "%s" > "%s"', cmd, Filename, Filename.tmp)
+			else sprintf('%s > "%s"', cmd, Filename.tmp)
 
 			# on Windows platform preface command with cmd /c 
 			if (.Platform$OS == "windows") {
@@ -502,6 +505,25 @@ read.csv.sql <- function(file, sql = "select * from file",
 	if (!missing(field.types)) 
 		file.format <- append(file.format, list(field.types = field.types))
 	pf <- parent.frame()
+
+	if (missing(file) || is.null(file) || is.na(file)) file <- ""
+	
+    ## filesheet
+    tf <- NULL
+    if ( substring(file, 1, 7) == "http://" ||
+         substring(file, 1, 6) == "ftp://" ) {
+
+        tf <- tempfile()
+		on.exit(unlink(tf))
+        # if(verbose)
+        # cat("Downloading",
+        #      dQuote.ascii(file), " to ",
+        #      dQuote.ascii(tf), "...\n")
+        download.file(file, tf, mode = "wb")
+        # if(verbose) cat("Done.\n")
+        file <- tf
+      }
+
 	p <- proto(pf, file = file(file))
 	p <- do.call(proto, list(pf, file = file(file)))
 	sqldf(sql, envir = p, file.format = file.format, dbname = dbname, drv = drv, ...)
