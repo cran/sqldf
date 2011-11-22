@@ -1,15 +1,15 @@
 Package: sqldf
-Version: 0.4-4
-Date: 2011-11-14
+Version: 0.4-5
+Date: 2011-11-22
 Title: Perform SQL Selects on R Data Frames
 Author: G. Grothendieck <ggrothendieck@gmail.com>
 Maintainer: G. Grothendieck <ggrothendieck@gmail.com>
 Description: Description: Manipulate R data frames using SQL.
 Depends: R (>= 2.10.0), DBI (>= 0.2-5), RSQLite (>= 0.8-0),
         RSQLite.extfuns, gsubfn, proto, chron
-Suggests: RH2, RMySQL, RpgSQL, svUnit
+Suggests: RH2, RMySQL, RpgSQL, svUnit, tcltk
 License: GPL-2
 URL: http://sqldf.googlecode.com
-Packaged: 2011-11-14 23:27:36 UTC; Louis
+Packaged: 2011-11-22 11:52:12 UTC; Louis
 Repository: CRAN
-Date/Publication: 2011-11-15 06:50:01
+Date/Publication: 2011-11-22 12:19:20

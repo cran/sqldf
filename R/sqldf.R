@@ -128,7 +128,7 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 				}
     			dbDisconnect(connection)
     		}
-    	})
+    	}, add = TRUE)
 		if (request.close) {
 			if (identical(connection, getOption("sqldf.connection")))
 				options(sqldf.connection = NULL)
@@ -247,7 +247,14 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 
 	# words. is a list whose ith component contains vector of words in ith stmt
 	# words is all the words in one long vector without duplicates
+	has.tcltk <- require("tcltk")
+    if (!has.tcltk) {
+		gsubfn.engine.orig <- getOption("gsubfn.engine")
+		options(gsubfn.engine = "R")
+		on.exit(options(gsubfn.engine = gsubfn.engine.orig), add = TRUE)
+	}
 	words. <- words <- strapply(x, "[[:alnum:]._]+")
+	
 	if (length(words) > 0) words <- unique(unlist(words))
 	is.special <- sapply(
 		mget(words, envir, "any", NA, inherits = TRUE), 
@@ -290,7 +297,7 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 				Filename, "already in", dbname, "\n"))
 		}
 		args <- c(list(conn = connection, name = fo, value = Filename), 
-			modifyList(list(eol = eol), file.format))
+			modifyList(list(eol = eol, comment.char = ""), file.format))
 		args <- modifyList(args, as.list(attr(get(fo, envir), "file.format")))
 		filter <- args$filter
 		if (!is.null(filter)) {
@@ -470,7 +477,7 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 			} else if (inherits(df[[cn]], "POSIXct"))
 				return(as.POSIXct(rs[[i]]))
 			else if (inherits(df[[cn]], "times")) 
-				return(times(df[[cn]]))
+				return(as.times.character(rs[[i]]))
 			else {
 				asfn <- paste("as", 
 					class(df[[cn]]), sep = ".")
@@ -490,7 +497,7 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 
 read.csv.sql <- function(file, sql = "select * from file", 
 	header = TRUE, sep = ",", row.names, eol, skip, filter, nrows, field.types,
-	dbname = tempfile(), drv = "SQLite", ...) {
+    comment.char, dbname = tempfile(), drv = "SQLite", ...) {
 	file.format <- list(header = header, sep = sep)
 	if (!missing(eol)) 
 		file.format <- append(file.format, list(eol = eol))
@@ -504,6 +511,8 @@ read.csv.sql <- function(file, sql = "select * from file",
 		file.format <- append(file.format, list(nrows = nrows))
 	if (!missing(field.types)) 
 		file.format <- append(file.format, list(field.types = field.types))
+	if (!missing(comment.char)) 
+		file.format <- append(file.format, list(comment.char = comment.char))
 	pf <- parent.frame()
 
 	if (missing(file) || is.null(file) || is.na(file)) file <- ""
@@ -514,7 +523,7 @@ read.csv.sql <- function(file, sql = "select * from file",
          substring(file, 1, 6) == "ftp://" ) {
 
         tf <- tempfile()
-		on.exit(unlink(tf))
+		on.exit(unlink(tf), add = TRUE)
         # if(verbose)
         # cat("Downloading",
         #      dQuote.ascii(file), " to ",
@@ -532,6 +541,7 @@ read.csv.sql <- function(file, sql = "select * from file",
 
 read.csv2.sql <- function(file, sql = "select * from file", 
 	header = TRUE, sep = ";", row.names, eol, skip, filter, nrows, field.types,
+    comment.char = "",
     dbname = tempfile(), drv = "SQLite", ...) {
 
 	if (missing(filter)) {
@@ -542,5 +552,6 @@ read.csv2.sql <- function(file, sql = "select * from file",
 
 read.csv.sql(file = file, sql = sql, header = header, sep = sep, 
 		row.names = row.names, eol = eol, skip = skip, filter = filter, 
-		nrows = nrows, field.types = field.types, dbname = dbname, drv = drv)
+		nrows = nrows, field.types = field.types, comment.char = comment.char,
+		dbname = dbname, drv = drv)
 }
