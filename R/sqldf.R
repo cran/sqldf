@@ -3,7 +3,7 @@ sqldf <- function(x, stringsAsFactors = FALSE,
    row.names = FALSE, envir = parent.frame(), 
    method = getOption("sqldf.method"),
    file.format = list(), dbname, drv = getOption("sqldf.driver"), 
-   user, password = "", host = "localhost",
+   user, password = "", host = "localhost", port,
    dll = getOption("sqldf.dll"), connection = getOption("sqldf.connection"),
    verbose = isTRUE(getOption("sqldf.verbose"))) {
 
@@ -24,6 +24,7 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 		if (drv == "h2") { nam
 		} else if (drv == "mysql") { nam
 		} else if (drv == "pgsql") { nam
+		} else if (drv == "postgresql") { nam
 		} else {
 			if (regexpr(".", nam, fixed = TRUE)) {
 				paste("`", nam, "`", sep = "")
@@ -139,14 +140,23 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 	# if con is missing then connection opened
 	if (request.open || request.nocon) {
     
-    	if (is.null(drv)) {
-    		drv <- if ("package:RpgSQL" %in% search()) { "pgSQL"
+    	if (is.null(drv) || drv == "") {
+    		drv <- if ("package:RPostgreSQL" %in% search()) { "PostgreSQL"
+    		} else if ("package:RpgSQL" %in% search()) { "pgSQL"
 			} else if ("package:RMySQL" %in% search()) { "MySQL" 
     		} else if ("package:RH2" %in% search()) { "H2" 
     		} else "SQLite"
     	}
-    
+
+		drv <- sub("^[Rr]", "", drv)
+		pkg <- paste("R", drv, sep = "")
+		if (verbose) {
+			if (!is.loaded(pkg)) cat("sqldf: library(", pkg, ")\n", sep = "")
+			library(pkg, character.only = TRUE)
+		} else library(pkg, character.only = TRUE)
+
 		drv <- tolower(drv)
+
     	if (drv == "mysql") {
 			if (verbose) cat("sqldf: m <- dbDriver(\"MySQL\")\n")
     		m <- dbDriver("MySQL")
@@ -158,6 +168,32 @@ sqldf <- function(x, stringsAsFactors = FALSE,
     				dbConnect(m) 
     			} else dbConnect(m, dbname = dbname)
     			dbPreExists <- TRUE
+		} else if (drv == "postgresql") {
+			if (verbose) cat("sqldf: m <- dbDriver(\"PostgreSQL\")\n")
+    		m <- dbDriver("PostgreSQL")
+			if (missing(user) || is.null(user)) {
+				user <- getOption("sqldf.RPostgreSQL.user")
+				if (is.null(user)) user <- "postgres"
+			}
+			if (missing(password) || is.null(password)) {
+				password <- getOption("sqldf.RPostgreSQL.password")
+				if (is.null(password)) password <- "postgres"
+			}
+			if (missing(dbname) || is.null(dbname)) {
+				dbname <- getOption("sqldf.RPostgreSQL.dbname")
+				if (is.null(dbname)) dbname <- "test"
+			}
+			if (missing(host) || is.null(host)) {
+				host <- getOption("sqldf.RPostgreSQL.host")
+				if (is.null(host)) host <- "localhost"
+			}
+			if (missing(port) || is.null(port)) {
+				port <- getOption("sqldf.RPostgreSQL.port")
+				if (is.null(port)) port <- 5432
+			}
+			connection <- dbConnect(m, user = user, password, dbname = dbname,
+				host = host, port = port)
+    		dbPreExists <- TRUE
 		} else if (drv == "pgsql") {
 			if (verbose) cat("sqldf: m <- dbDriver(\"pgSQL\")\n")
     		m <- dbDriver("pgSQL")
@@ -209,10 +245,12 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 				if (verbose) {
 					cat("sqldf: connection <- dbConnect(m, dbname = \"", dbname, 
 						"\", loadable.extensions = TRUE\n", sep = "")
+					cat("sqldf: library(RSQLite.extfuns)\n")
 					cat("sqldf: select load_extension('", dll, "')\n", sep = "")
 				}
 				connection <- dbConnect(m, dbname = dbname, 
 					loadable.extensions = TRUE)
+				library("RSQLite.extfuns", character.only = TRUE)
 				s <- sprintf("select load_extension('%s')", dll)
 				dbGetQuery(connection, s)
 			} else {
@@ -224,6 +262,7 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 			# if (require("RSQLite.extfuns")) init_extensions(connection)
 			# load extension functions from RSQLite.extfuns
 			if (verbose) cat("sqldf: init_extensions(connection)\n")
+			library(RSQLite.extfuns)
 			init_extensions(connection)
     	}
 		attr(connection, "dbPreExists") <- dbPreExists
@@ -237,7 +276,8 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 
 	# connection was specified
 	if (request.con) {
-		drv <- if (inherits(connection, "pgSQLConnection")) "pgSQL"
+		drv <- if (inherits(connection, "PostgreSQLConnection")) "PostgreSQL"
+		else if (inherits(connection, "pgSQLConnection")) "pgSQL"
 		else if (inherits(connection, "MySQLConnection")) "MySQL"
 		else if (inherits(connection, "H2Connection")) "H2"
 		else "SQLite"
@@ -247,13 +287,12 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 
 	# words. is a list whose ith component contains vector of words in ith stmt
 	# words is all the words in one long vector without duplicates
-	has.tcltk <- require("tcltk")
-    if (!has.tcltk) {
-		gsubfn.engine.orig <- getOption("gsubfn.engine")
-		options(gsubfn.engine = "R")
-		on.exit(options(gsubfn.engine = gsubfn.engine.orig), add = TRUE)
+	engine <- getOption("gsubfn.engine")
+	if (is.null(engine) || is.na(engine) || engine == "") {
+		has.tcltk <- require("tcltk")
+		engine <- if (has.tcltk) "tcl" else "R"
 	}
-	words. <- words <- strapply(x, "[[:alnum:]._]+")
+	words. <- words <- strapply(x, "[[:alnum:]._]+", engine = engine)
 	
 	if (length(words) > 0) words <- unique(unlist(words))
 	is.special <- sapply(
@@ -355,7 +394,7 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 	# SQLite can process all statements using dbGetQuery.  
 	# Other databases process select/call/show with dbGetQuery and other 
 	# statements with dbSendQuery.
-	if (drv == "sqlite" || drv == "mysql") {
+	if (drv == "sqlite" || drv == "mysql" || drv == "postgresql") {
 		for(xi in x) {
 			if (verbose) {
 				cat("sqldf: dbGetQuery(connection, '", xi, "')\n", sep = "")
@@ -391,14 +430,18 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 		return(do.call("colClass", list(rs, to.df)))
 	}
 	# process row_names
-	rs <- if ("row_names" %in% names(rs)) {
+	row_names_name <- grep("row[_.]names", names(rs), value = TRUE)
+	if (length(row_names_name) > 1) warning(paste("ambiguity regarding row names:", row_names_name))
+	row_names_name <- row_names_name[1]
+	# rs <- if ("row_names" %in% names(rs)) {
+	rs <- if (!is.na(row_names_name)) {
 		if (identical(row.names, FALSE)) {
 			# subset(rs, select = - row_names)
-			rs[names(rs) != "row_names"]
+			rs[names(rs) != row_names_name]
 		} else { 
-			rn <- rs$row_names
+			rn <- rs[[row_names_name]]
 			# rs <- subset(rs, select = - row_names)
-			rs <- rs[names(rs) != "row_names"]
+			rs <- rs[names(rs) != row_names_name]
 			if (all(regexpr("^[[:digit:]]*$", rn) > 0)) 
 				rn <- as.integer(rn)
 			rownames(rs) <- rn
@@ -537,7 +580,6 @@ read.csv.sql <- function(file, sql = "select * from file",
 	p <- do.call(proto, list(pf, file = file(file)))
 	sqldf(sql, envir = p, file.format = file.format, dbname = dbname, drv = drv, ...)
 }
-
 
 read.csv2.sql <- function(file, sql = "select * from file", 
 	header = TRUE, sep = ";", row.names, eol, skip, filter, nrows, field.types,
