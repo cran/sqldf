@@ -1,3 +1,16 @@
+Version 0.4-6.4
+
+o uses ByteCompile hence dependence on R 2.14.0 or higher
+
+o now uses strapplyc if tcltk available hence dependence on gsubfn 0.6 or higher
+
+o fixed time zone bug in dealing with POSIXct
+
+o added MASS to Suggests to pass R CMD check in R 2.15.0
+
+o RSQLite and RSQLite.extfuns namespaces are loaded at startup if there 
+  are no other drivers supported by sqldf currently on search path
+
 Version 0.4-6.1
 
 o message regarding RPostgreSQL was not issued when RPostgreSQL is loaded

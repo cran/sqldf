@@ -7,10 +7,12 @@ sqldf <- function(x, stringsAsFactors = FALSE,
    dll = getOption("sqldf.dll"), connection = getOption("sqldf.connection"),
    verbose = isTRUE(getOption("sqldf.verbose"))) {
 
-   as.POSIXct.numeric <- function(x, origin = "1970-01-01 00:00:00", ...)
-      base::as.POSIXct.numeric(x, origin = origin, ...)
+   # as.POSIXct.numeric <- function(x, origin = "1970-01-01 00:00:00", ...)
+   #  base::as.POSIXct.numeric(x, origin = origin, ...)
+   as.POSIXct.numeric <- function(x, ...)
+      structure(x, class = c("POSIXct", "POSIXt"))
    as.POSIXct.character <- function(x) structure(as.numeric(x),
-	class = c("POSIXt", "POSIXct"))
+	class = c("POSIXct", "POSIXt"))
    as.Date.character <- function(x) structure(as.numeric(x), class = "Date")
    as.Date2 <- function(x) UseMethod("as.Date2")
    as.Date2.character <- function(x) base:::as.Date.character(x)
@@ -193,6 +195,7 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 			}
 			connection <- dbConnect(m, user = user, password, dbname = dbname,
 				host = host, port = port)
+		    if (verbose) cat(sprintf("sqldf: connection <- dbConnect(m, user='%s', password=<...>, dbname = '%s', host = '%s', port = '%s')\n", user, dbname, host, port))
     		dbPreExists <- TRUE
 		} else if (drv == "pgsql") {
 			if (verbose) cat("sqldf: m <- dbDriver(\"pgSQL\")\n")
@@ -285,14 +288,19 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 		dbPreExists <- attr(connection, "dbPreExists")
 	}
 
-	# words. is a list whose ith component contains vector of words in ith stmt
-	# words is all the words in one long vector without duplicates
+	# engine is "tcl" or "R".  
 	engine <- getOption("gsubfn.engine")
 	if (is.null(engine) || is.na(engine) || engine == "") {
-		has.tcltk <- require("tcltk")
-		engine <- if (has.tcltk) "tcl" else "R"
-	}
-	words. <- words <- strapply(x, "[[:alnum:]._]+", engine = engine)
+		engine <- if (require("tcltk")) "tcl" else "R"
+	} else if (engine == "tcl") require("tcltk")
+
+	# words. is a list whose ith component contains vector of words in ith stmt
+	# words is all the words in one long vector without duplicates
+	#
+	# If "tcl" is available use the faster strapplyc else strapply
+	words. <- words <- if (engine == "tcl") {
+		strapplyc(x, "[[:alnum:]._]+")
+	} else strapply(x, "[[:alnum:]._]+", engine = "R")
 	
 	if (length(words) > 0) words <- unique(unlist(words))
 	is.special <- sapply(
@@ -336,7 +344,8 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 				Filename, "already in", dbname, "\n"))
 		}
 		args <- c(list(conn = connection, name = fo, value = Filename), 
-			modifyList(list(eol = eol, comment.char = ""), file.format))
+			modifyList(list(eol = eol, comment.char = "", quote = '"'), 
+            file.format))
 		args <- modifyList(args, as.list(attr(get(fo, envir), "file.format")))
 		filter <- args$filter
 		if (!is.null(filter)) {
@@ -506,7 +515,7 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 					levs <- levels(df[[cn]])
 					if (all(u %in% levs))
 						return(factor(rs[[i]], levels = levels(df[[cn]]), 
-							order = TRUE))
+							ordered = TRUE))
 					else return(rs[[i]])
 				} else return(rs[[i]])
 			} else if (inherits(df[[cn]], "factor")) {
