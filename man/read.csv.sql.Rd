@@ -11,8 +11,12 @@ portion is processed by R so that files larger than R can otherwise
 handle can be accommodated.
 }
 \usage{
-read.csv.sql(file, sql = "select * from file", header = TRUE, sep = ",", row.names, eol, skip, filter, nrows, field.types, comment.char, dbname = tempfile(), drv = "SQLite", ...)
-read.csv2.sql(file, sql = "select * from file", header = TRUE, sep = ";", row.names, eol, skip, filter, nrows, field.types, comment.char, dbname = tempfile(), drv = "SQLite", ...)
+read.csv.sql(file, sql = "select * from file", header = TRUE, sep = ",", 
+row.names, eol, skip, filter, nrows, field.types, comment.char, 
+colClasses, dbname = tempfile(), drv = "SQLite", ...)
+read.csv2.sql(file, sql = "select * from file", header = TRUE, sep = ";", 
+row.names, eol, skip, filter, nrows, field.types, comment.char, 
+colClasses, dbname = tempfile(), drv = "SQLite", ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -55,7 +59,10 @@ columns.  Specifying these types improves how fast it takes.
 Unless speed is very important this argument is not normally used.
 }
   \item{comment.char}{If specified this character and anything following it
-on any line of the input will be ignored.}
+on any line of the input will be ignored.
+}
+  \item{colClasses}{As in \code{read.csv}.
+}
   \item{dbname}{
 As in \code{sqldf} except that the default is \code{tempfile()}.
 Specifying \code{NULL} will put the database in memory which may improve speed
@@ -101,10 +108,10 @@ is returned.
 
 \examples{
 \dontrun{
-# might need to change eol
+# might need to specify eol= too depending on your system
 write.csv(iris, "iris.csv", quote = FALSE, row.names = FALSE)
 iris2 <- read.csv.sql("iris.csv", 
-	sql = "select * from file where Sepal.Length > 5", eol = "\n")
+	sql = "select * from file where Species = 'setosa' ")
 
 }
 }

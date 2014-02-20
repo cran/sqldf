@@ -1,3 +1,11 @@
+Version 0.4-7
+
+o misc changes to satisfy R CMD CHECK in R 3.0.2
+
+Version 0.4-6.5
+
+o fixed the a2r/a2s unit test
+
 Version 0.4-6.4
 
 o uses ByteCompile hence dependence on R 2.14.0 or higher
