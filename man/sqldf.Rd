@@ -186,6 +186,27 @@ otherwise, all tables that were created are dropped in order to leave
 the database in the same state that it was before.  The database
 connection is terminated.}
 }
+
+\code{sqldf} supports the following R options for RPostgreSQL: 
+\code{"sqldf.RPostgreSQL.dbname"},
+\code{"sqldf.RPostgreSQL.user"},
+\code{"sqldf.RPostgreSQL.password"},
+\code{"sqldf.RPostgreSQL.host"} and
+\code{"sqldf.RPostgreSQL.port"} which have defaults \code{"test"},
+\code{"postgres"}, \code{"postgres"}, \code{"localhost"} and \code{5432},
+respectively.  It also supports
+\code{"sqldf.RPostgreSQL.other"} which is a list of named parameters.  These
+may include 
+\code{dbname},
+\code{user},
+\code{password},
+\code{host} and 
+\code{port}.
+Individually these take precdence over otherwise specified connection
+arguments.
+
+
+
 Warning. Although sqldf is usually used with on-the-fly databases
 which it automatically sets up and destroys if you wish to use it
 with existing databases be sure to back up your database prior to
@@ -241,8 +262,7 @@ should be aware of this change in \code{DBI}.
 
 If \code{getOption("sqldf.dll")} is specified
 then the named dll will be loaded as an SQLite loadable extension.  
-This is in addition to the extension found in the RSQLite.extfunctions 
-R package which is always loaded into SQLite.
+This is in addition to the extension functions included with RSQLite.
 
 }
 
@@ -308,8 +328,8 @@ identical(a7r[-1], a7s[-1])
 
 # aggregate - avg conc and uptake by Plant and Type
 a8r <- aggregate(iris[1:2], iris[5], mean)
-a8s <- sqldf("select Species, avg(Sepal_Length) `Sepal.Length`, 
-   avg(Sepal_Width) `Sepal.Width` from iris group by Species")
+a8s <- sqldf('select Species, avg("Sepal.Length") `Sepal.Length`, 
+   avg("Sepal.Width") `Sepal.Width` from iris group by Species')
 all.equal(a8r, a8s)
 
 # by - avg conc and total uptake by Plant and Type
@@ -319,10 +339,10 @@ a9r <- do.call(rbind, by(iris, iris[5], function(x) with(x,
 		mean.Sepal.Width = mean(Sepal.Width),
 		mean.Sepal.ratio = mean(Sepal.Length/Sepal.Width)))))
 row.names(a9r) <- NULL
-a9s <- sqldf("select Species, avg(Sepal_Length) `mean.Sepal.Length`,
-	avg(Sepal_Width) `mean.Sepal.Width`, 
-	avg(Sepal_Length/Sepal_Width) `mean.Sepal.ratio` from iris
-	group by Species")
+a9s <- sqldf('select Species, avg("Sepal.Length") `mean.Sepal.Length`,
+	avg("Sepal.Width") `mean.Sepal.Width`, 
+	avg("Sepal.Length"/"Sepal.Width") `mean.Sepal.ratio` from iris
+	group by Species')
 all.equal(a9r, a9s)
 
 # head - top 3 breaks

@@ -193,9 +193,23 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 				port <- getOption("sqldf.RPostgreSQL.port")
 				if (is.null(port)) port <- 5432
 			}
-			connection <- dbConnect(m, user = user, password, dbname = dbname,
-				host = host, port = port)
-		    if (verbose) cat(sprintf("sqldf: connection <- dbConnect(m, user='%s', password=<...>, dbname = '%s', host = '%s', port = '%s')\n", user, dbname, host, port))
+			connection.args <- list(m, user = user, password,
+				dbname = dbname, host = host, port = port)
+			connection.args.other <- getOption("sqldf.RPostgreSQL.other")
+			if (!is.null(connection.args.other))
+			connection.args <- modifyList(connection.args,
+						connection.args.other)
+			connection <- do.call("dbConnect", connection.args)
+			# connection <- dbConnect(m, user = user, password, dbname = dbname,
+				# host = host, port = port)
+
+		    if (verbose) {
+			    cat(sprintf("sqldf: connection <- dbConnect(m, user='%s', password=<...>, dbname = '%s', host = '%s', port = '%s', ...)\n", user, dbname, host, port))
+			    if (!is.null(connection.args.other)) {
+				    cat("other connection arguments:\n")
+				    print(connection.args.other)
+			    }
+		    }
     		dbPreExists <- TRUE
 		} else if (drv == "pgsql") {
 			if (verbose) cat("sqldf: m <- dbDriver(\"pgSQL\")\n")
@@ -248,12 +262,10 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 				if (verbose) {
 					cat("sqldf: connection <- dbConnect(m, dbname = \"", dbname, 
 						"\", loadable.extensions = TRUE\n", sep = "")
-					cat("sqldf: library(RSQLite.extfuns)\n")
 					cat("sqldf: select load_extension('", dll, "')\n", sep = "")
 				}
 				connection <- dbConnect(m, dbname = dbname, 
 					loadable.extensions = TRUE)
-				## library("RSQLite.extfuns", character.only = TRUE)
 				s <- sprintf("select load_extension('%s')", dll)
 				dbGetQuery(connection, s)
 			} else {
@@ -262,11 +274,8 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 				}
 				connection <- dbConnect(m, dbname = dbname)
 			}
-			# if (require("RSQLite.extfuns")) init_extensions(connection)
-			# load extension functions from RSQLite.extfuns
-			if (verbose) cat("sqldf: init_extensions(connection)\n")
-			## library(RSQLite.extfuns)
-			init_extensions(connection)
+			if (verbose) cat("sqldf: initExtension(connection)\n")
+			initExtension(connection)
     	}
 		attr(connection, "dbPreExists") <- dbPreExists
 		if (missing(dbname) && drv == "sqlite") dbname <- ":memory:"
@@ -415,7 +424,7 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 			if (length(words.[[i]]) > 0) {
 				dbGetQueryWords <- c("select", "show", "call", "explain", 
 					"with")
-				if (tolower(words.[[i]][1]) %in% dbGetQueryWords) {
+				if (tolower(words.[[i]][1]) %in% dbGetQueryWords || drv != "h2") {
 					if (verbose) {
 						cat("sqldf: dbGetQuery(connection, '", x[i], "')\n", sep = "")
 					}
@@ -424,7 +433,7 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 					if (verbose) {
 						cat("sqldf: dbSendUpdate:", x[i], "\n")
 					}
-					rs <- dbSendUpdate(connection, x[i])
+					rs <- get("dbSendUpdate")(connection, x[i])
 				}
 			}
 		}
