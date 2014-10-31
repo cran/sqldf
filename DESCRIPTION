@@ -1,6 +1,6 @@
 Package: sqldf
-Version: 0.4-9
-Date: 2014-10-26
+Version: 0.4-10
+Date: 2014-10-31
 Title: Perform SQL Selects on R Data Frames
 Author: G. Grothendieck <ggrothendieck@gmail.com>
 Maintainer: G. Grothendieck <ggrothendieck@gmail.com>
@@ -12,7 +12,7 @@ Imports: DBI (>= 0.2-5), chron
 License: GPL-2
 BugReports: http://groups.google.com/group/sqldf
 URL: http://sqldf.googlecode.com
-Packaged: 2014-10-27 02:29:52 UTC; Louis
+Packaged: 2014-11-06 23:43:55 UTC; Louis
 NeedsCompilation: no
 Repository: CRAN
-Date/Publication: 2014-10-27 07:12:38
+Date/Publication: 2014-11-07 01:01:50

@@ -353,7 +353,7 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 				Filename, "already in", dbname, "\n"))
 		}
 		args <- c(list(conn = connection, name = fo, value = Filename), 
-			modifyList(list(eol = eol, comment.char = "", quote = '"'), 
+			modifyList(list(eol = eol), 
             file.format))
 		args <- modifyList(args, as.list(attr(get(fo, envir), "file.format")))
 		filter <- args$filter
@@ -558,7 +558,7 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 
 read.csv.sql <- function(file, sql = "select * from file", 
 	header = TRUE, sep = ",", row.names, eol, skip, filter, nrows, field.types,
-    comment.char, colClasses, dbname = tempfile(), drv = "SQLite", ...) {
+    colClasses, dbname = tempfile(), drv = "SQLite", ...) {
 	file.format <- list(header = header, sep = sep)
 	if (!missing(eol)) 
 		file.format <- append(file.format, list(eol = eol))
@@ -572,8 +572,6 @@ read.csv.sql <- function(file, sql = "select * from file",
 		file.format <- append(file.format, list(nrows = nrows))
 	if (!missing(field.types)) 
 		file.format <- append(file.format, list(field.types = field.types))
-	if (!missing(comment.char)) 
-		file.format <- append(file.format, list(comment.char = comment.char))
 	if (!missing(colClasses))
 		file.format <- append(file.format, list(colClasses = colClasses))
 	pf <- parent.frame()
@@ -603,8 +601,7 @@ read.csv.sql <- function(file, sql = "select * from file",
 
 read.csv2.sql <- function(file, sql = "select * from file", 
 	header = TRUE, sep = ";", row.names, eol, skip, filter, nrows, field.types,
-    comment.char = "", colClasses,
-    dbname = tempfile(), drv = "SQLite", ...) {
+    colClasses, dbname = tempfile(), drv = "SQLite", ...) {
 
 	if (missing(filter)) {
 		filter <- if (.Platform$OS == "windows")
@@ -614,6 +611,6 @@ read.csv2.sql <- function(file, sql = "select * from file",
 
 read.csv.sql(file = file, sql = sql, header = header, sep = sep, 
 		row.names = row.names, eol = eol, skip = skip, filter = filter, 
-		nrows = nrows, field.types = field.types, comment.char = comment.char,
+		nrows = nrows, field.types = field.types, 
 		colClasses = colClasses, dbname = dbname, drv = drv)
 }
