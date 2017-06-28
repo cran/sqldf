@@ -20,20 +20,6 @@ sqldf <- function(x, stringsAsFactors = FALSE,
    as.dates.character <- function(x) structure(as.numeric(x), class = c("dates", "times"))
    as.times.character <- function(x) structure(as.numeric(x), class = "times")
 
-
-   # nam2 code is duplicated above.  Needs to be factored out.
-   backquote.maybe <- function(nam) {
-		if (drv == "h2") { nam
-		} else if (drv == "mysql") { nam
-		} else if (drv == "pgsql") { nam
-		} else if (drv == "postgresql") { nam
-		} else {
-			if (regexpr(".", nam, fixed = TRUE)) {
-				paste("`", nam, "`", sep = "")
-			} else nam
-		}
-	}
-
    name__class <- function(data, ...) {
 	if (is.null(data)) return(data)
 	cls <- sub(".*__([^_]+)|.*", "\\1", names(data))
@@ -114,11 +100,10 @@ sqldf <- function(x, stringsAsFactors = FALSE,
     			# data base pre-existing
 
     			for (nam in dfnames) {
-					nam2 <- backquote.maybe(nam)
 					if (verbose) {
-						cat("sqldf: dbRemoveTable(connection, ", nam2, ")\n")
+						cat("sqldf: dbRemoveTable(connection, ", nam, ")\n")
 					}
-					dbRemoveTable(connection, nam2)
+					dbRemoveTable(connection, nam)
 				}
     			for (fo in fileobjs) {
 					if (verbose) {
@@ -300,8 +285,8 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 	# engine is "tcl" or "R".  
 	engine <- getOption("gsubfn.engine")
 	if (is.null(engine) || is.na(engine) || engine == "") {
-		engine <- if (require("tcltk")) "tcl" else "R"
-	} else if (engine == "tcl") require("tcltk")
+		engine <- if (requireNamespace("tcltk", quietly = TRUE)) "tcl" else "R"
+	} else if (engine == "tcl") requireNamespace("tcltk", quietly = TRUE)
 
 	# words. is a list whose ith component contains vector of words in ith stmt
 	# words is all the words in one long vector without duplicates
@@ -327,20 +312,19 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 			stop(paste("sqldf:", "table", nam, 
 				"already in", dbname, "\n"))
 		}
-		# check if the nam2 processing works with MySQL
+		# check if the nam processing works with MySQL
 		# if not then ensure its only applied to SQLite
 		DF <- as.data.frame(get(nam, envir))
 		if (!is.null(to.db) && is.function(to.db)) DF <- to.db(DF)
-		nam2 <- backquote.maybe(nam)
-		# if (verbose) cat("sqldf: writing", nam2, "to database\n")
-		if (verbose) cat("sqldf: dbWriteTable(connection, '", nam2, "', ", nam, ", row.names = ", row.names, ")\n", sep = "")
-		dbWriteTable(connection, nam2, DF, row.names = row.names)
+		# if (verbose) cat("sqldf: writing", nam, "to database\n")
+		if (verbose) cat("sqldf: dbWriteTable(connection, '", nam, "', ", nam, ", row.names = ", row.names, ")\n", sep = "")
+		dbWriteTable(connection, nam, DF, row.names = row.names)
 	}
 
 	# process file objects
 	fileobjs <- if (is.null(file.format)) { character(0)
 	} else {
-		eol <- if (.Platform$OS == "windows") "\r\n" else "\n"
+		eol <- if (.Platform$OS.type == "windows") "\r\n" else "\n"
 		words[is.special == 2]
 	}
 	for(i in seq_along(fileobjs)) {
@@ -382,7 +366,7 @@ sqldf <- function(x, stringsAsFactors = FALSE,
 			else sprintf('%s > "%s"', cmd, Filename.tmp)
 
 			# on Windows platform preface command with cmd /c 
-			if (.Platform$OS == "windows") {
+			if (.Platform$OS.type == "windows") {
 				cmd <- paste("cmd /c", cmd)
 				if (FALSE) {
 				key <- "SOFTWARE\\R-core"
@@ -580,8 +564,10 @@ read.csv.sql <- function(file, sql = "select * from file",
 	
     ## filesheet
     tf <- NULL
-    if ( substring(file, 1, 7) == "http://" ||
-         substring(file, 1, 6) == "ftp://" ) {
+    if ( substring(file, 1, 7) == "http://"  ||
+         substring(file, 1, 8) == "https://" ||
+         substring(file, 1, 6) == "ftp://"  ||
+         substring(file, 1, 7) == "ftps://" ) {
 
         tf <- tempfile()
 		on.exit(unlink(tf), add = TRUE)
@@ -604,7 +590,7 @@ read.csv2.sql <- function(file, sql = "select * from file",
     colClasses, dbname = tempfile(), drv = "SQLite", ...) {
 
 	if (missing(filter)) {
-		filter <- if (.Platform$OS == "windows")
+		filter <- if (.Platform$OS.type == "windows")
 			paste("cscript /nologo", normalizePath(system.file("trcomma2dot.vbs", package = "sqldf")))
 		else "tr , ."
 	}
